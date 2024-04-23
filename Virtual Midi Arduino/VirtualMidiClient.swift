@@ -20,54 +20,22 @@ let USE_EX = true
 class VirtualMidi {
     var midiClient: MIDIClientRef = 0
     var midiOutputPort: MIDIPortRef = 0
-    var midiDevice: MIDIDeviceRef = 0
-    var midiEntity: MIDIEntityRef = 0
+    var midiSource: MIDIEndpointRef = 0
+
  
     
     
     init(){
         print("Midi device initializing")
-        MIDIClientCreate("Virtual Midi Arduino" as CFString, nil, nil, &midiClient)
+        let statusClient: OSStatus =  MIDIClientCreate("Virtual Midi Arduino" as CFString, nil, nil, &midiClient)
+        print("Status client: ", statusClient)
+        print("Client: ", midiClient)
         MIDIOutputPortCreate(midiClient,  "MIDISenderOutputPort" as CFString, &midiOutputPort)
-        
-        //create a virtual device
-        var statusDevice: OSStatus
-        if (USE_EX) {
-            statusDevice = MIDIExternalDeviceCreate("Virtual Midi Arduino External" as CFString, "Stefano19" as CFString, "Arduino Micro" as CFString, &midiDevice)
-        } else {
-            statusDevice = MIDIDeviceCreate(nil, "Virtual Midi Arduino" as CFString, "Stefano19" as CFString, "Arduino Micro" as CFString, &midiDevice)
-        }
-        print("Status : ", statusDevice)
-        print("Device: ", midiDevice)
-        let statusEntity: OSStatus = MIDIDeviceNewEntity(midiDevice, "Entità 1" as CFString, MIDIProtocolID._1_0, true, 1, 1, &midiEntity)
-        print("Status : ", statusEntity)
-        print("Entity: ", midiEntity)
-        
-        
-        
-        
-        
-        
-        
-        if (USE_EX) {
-            MIDISetupAddExternalDevice(midiDevice)
-        } else {
-            MIDISetupAddDevice(midiDevice)
-        }
-        
-        MIDIRestart()
-        
-        
-        //List all devices
-        let numberOfDevices = MIDIGetNumberOfDevices()
-        print("Number of devices: ", numberOfDevices)
-        for i in 0..<numberOfDevices {
-            let device = MIDIGetDevice(i)
-            var name: Unmanaged<CFString>?
-            MIDIObjectGetStringProperty(device, kMIDIPropertyName, &name)
-            print("Device ", i, ": ", name!.takeRetainedValue(), " (", device, ")")
-        }
-        
+        let statusSource: OSStatus =  MIDISourceCreateWithProtocol(midiClient, "Sorgente Arduino" as CFString, MIDIProtocolID._1_0, &midiSource)
+        print("Status source: ", statusSource)
+        print("Source: ", midiSource)
+
+
 
         
     }
@@ -83,12 +51,7 @@ class VirtualMidi {
         var packet = MIDIEventPacket()
         
         
-        
-        
-        
-        
-        
-        
+
         //https://www.songstuff.com/recording/article/midi-message-format/
         eventList.numPackets = 1
         for (index, value) in sliderData.values.enumerated() {
@@ -96,9 +59,6 @@ class VirtualMidi {
             
             let convertedValue: UInt8 = UInt8(value / 8)
             //let message: MIDIMessage_32 = MIDI1UPControlChange(0 as UInt8, 0 as UInt8, UInt8(index), convertedValue)
-            
-            
-            
             
             print("Adding event ", index, "with value ", convertedValue)
             let controllerNumber = UInt8(20 + index)
@@ -116,17 +76,12 @@ class VirtualMidi {
     }
     
     deinit {
-        print("Midi device deinitializing")
-        
-        if (USE_EX) {
-            MIDISetupRemoveExternalDevice(midiDevice)
-        } else {
-            MIDISetupRemoveDevice(midiDevice)
-        }
-        
+
+     
+        print("Deinit")
         MIDIClientDispose(midiClient)
         MIDIPortDispose(midiOutputPort)
-        MIDIDeviceDispose(midiDevice)
+
         
     }
     
