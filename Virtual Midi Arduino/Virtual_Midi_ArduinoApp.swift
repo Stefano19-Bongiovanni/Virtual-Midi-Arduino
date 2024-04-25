@@ -8,8 +8,13 @@
 import SwiftUI
 import SwiftData
 
+
+
 @main
 struct Virtual_Midi_ArduinoApp: App {
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        return true
+    }
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Item.self,
@@ -23,6 +28,8 @@ struct Virtual_Midi_ArduinoApp: App {
         }
     }()
 
+    
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
