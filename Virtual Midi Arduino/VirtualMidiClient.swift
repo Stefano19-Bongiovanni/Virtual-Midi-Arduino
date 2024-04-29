@@ -9,7 +9,7 @@ import Foundation
 import CoreMIDI
 
 //Define constant USE_EXTERNAL_DEVICE
-let USE_EX = true
+let USE_EX = true		
 
 
 let messages: [UInt8]  = [

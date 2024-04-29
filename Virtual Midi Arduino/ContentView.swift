@@ -9,64 +9,77 @@ import SwiftUI
 import ORSSerial
 import CoreMIDI
 
-    struct ContentView: View {
-        @State private var selectedDeviceIndex: Int = 0
-        @State private var midiDevice: VirtualMidi = VirtualMidi()
-        @ObservedObject var serialDeviceModel: SerialDeviceModel = SerialDeviceModel()
-        
-        @ObservedObject var controller: SerialPortController = SerialPortController()
-        
-        var body: some View {
-            VStack {
-                HStack {
-                    Picker( "Select device",selection: $selectedDeviceIndex) {
-                        ForEach(0..<serialDeviceModel.serialDevices.count, id: \.self) { index in
-                            Text(serialDeviceModel.serialDevices[index].path) // Accessing device via index
-                        }
-                    }.disabled(controller.started)
+struct ContentView: View {
+    @State private var selectedDeviceIndex: Int = 0
+    @State private var midiDevice: VirtualMidi = VirtualMidi()
+    @ObservedObject var serialDeviceModel: SerialDeviceModel = SerialDeviceModel()
+    
+    @ObservedObject var controller: SerialPortController = SerialPortController()
+    
+    var body: some View {
+        VStack {
+            HStack {
+                Picker( "Select device",selection: $selectedDeviceIndex) {
+                    ForEach(0..<serialDeviceModel.serialDevices.count, id: \.self) { index in
+                        Text(serialDeviceModel.serialDevices[index].path) // Accessing device via index
+                    }
+                }.disabled(controller.started)
+                if (controller.started) {
+                    Button(action: stopListening) {
+                        Text("Stop")
+                    }
+                } else {
+                    
                     
                     Button(action: startListening) {
                         Text("Start")
-                    }.disabled(controller.started)
-                }.padding()
-                HStack {
+                    }}
+                
+                
+            }.padding()
+            HStack {
+                
+                if let lastMessage = controller.messages.last {
+                    SliderDataRow(sliderData: lastMessage)
+                } else {
                     
-                    if let lastMessage = controller.messages.last {
-                        SliderDataRow(sliderData: lastMessage)
-                    } else {
-                        
-                    }
                 }
-                .padding()
-                
-                HStack {
-                    //Send test sliderData
-                    Button(action: {
-                        let testSliderData = SliderData(string: "100|1022|683|081|853|542|881|1023")
-                        midiDevice.sendSliderData( testSliderData! )
-                    }) {
-                        Text("Send test data")
-                    }
-                    
-          
-                    
-                }.padding()
-                
-                
-                
             }
-        }
-        
-        
-        
-        func startListening(){
-            let selectedPort: ORSSerialPort = serialDeviceModel.serialDevices[selectedDeviceIndex]
-            //Call start listending and call onEvent
-            controller.startListening(selectedPort: selectedPort, callback: midiDevice.sendSliderData)
+            .padding()
+            /*
+            HStack {
+                //Send test sliderData
+                Button(action: {
+                    let testSliderData = SliderData(string: "100|1022|683|081|853|542|881|1023")
+                    midiDevice.sendSliderData( testSliderData! )
+                }) {
+                    Text("Send test data")
+                }
+                
+                
+                
+            }.padding()
+            
+            */
             
         }
+    }
+    
+    
+    
+    func startListening(){
+        let selectedPort: ORSSerialPort = serialDeviceModel.serialDevices[selectedDeviceIndex]
+        //Call start listending and call onEvent
+        controller.startListening(selectedPort: selectedPort, callback: midiDevice.sendSliderData)
         
     }
+    
+    func stopListening(){
+        let selectedPort: ORSSerialPort = serialDeviceModel.serialDevices[selectedDeviceIndex]
+        controller.stopListening(selectedPort: selectedPort)
+    }
+    
+}
 
 struct RotatedGauge: View {
     @Binding var val: Double
@@ -83,7 +96,7 @@ struct RotatedGauge: View {
             .frame(width: 80, height: 160) // resize after rotation
             .tint(Gradient(colors: [.green, .red]))
             .gaugeStyle(.accessoryLinear)
-//            .border(Color.white)
+            //            .border(Color.white)
             
             Text("\(Int(val))")
         }
@@ -95,11 +108,11 @@ struct SliderDataRow: View {
     
     var body: some View {
         HStack() {
-       
+            
             ForEach(sliderData.values, id: \.self) { value in
                 
                 RotatedGauge(val: .constant(Double(value)))
-
+                
             }
             
         }
@@ -161,10 +174,10 @@ class SerialPortController:  NSObject, ORSSerialPortDelegate, ObservableObject {
         self.callback = callback
         started = true
         
-        
-        
-        
-        
+    }
+    
+    func stopListening(selectedPort: ORSSerialPort) {
+        selectedPort.close()
     }
     
     
@@ -174,12 +187,12 @@ class SerialPortController:  NSObject, ORSSerialPortDelegate, ObservableObject {
         
         
         for byte in data {
-               // Check if byte represents a newline character
-               let newline = byte == 0x0A // Assuming newline character is represented by byte value 0x0A (LF)
+            // Check if byte represents a newline character
+            let newline = byte == 0x0A // Assuming newline character is represented by byte value 0x0A (LF)
             let isCarriageReturn = byte == 0x0D // ASCII value for carriage return
-
-                let char = Character(UnicodeScalar(byte))
-               //print("Char: \(char) newline: \(newline) isCarriageReturn: \(isCarriageReturn)")
+            
+            let char = Character(UnicodeScalar(byte))
+            //print("Char: \(char) newline: \(newline) isCarriageReturn: \(isCarriageReturn)")
             if (newline) {
                 if (loading) {
                     loading = false
@@ -198,14 +211,14 @@ class SerialPortController:  NSObject, ORSSerialPortDelegate, ObservableObject {
                 
                 receivedMessage.append(char)
             }
-           }
-        
-      
+        }
         
         
         
         
-       
+        
+        
+        
         
     }
     
@@ -218,10 +231,12 @@ class SerialPortController:  NSObject, ORSSerialPortDelegate, ObservableObject {
     }
     func serialPortWasClosed(_ serialPort: ORSSerialPort) {
         print("Closed")
+        started = false
     }
     
     func serialPortWasRemovedFromSystem(_ serialPort: ORSSerialPort) {
         print("Removed from system")
+        started = false
     }
 }
 
